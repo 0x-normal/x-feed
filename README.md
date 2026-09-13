@@ -88,6 +88,7 @@ The active collector uses [Rettiwt-API](https://github.com/Rishikant181/Rettiwt-
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\bridge.test.mjs
+.\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\dashboard.test.mjs
 ```
 
 Tests use synthetic credentials and local HTTP; they do not call X. Windows vault tests need the same user's DPAPI access. The test suite includes synthetic encrypted migration checks.

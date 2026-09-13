@@ -23,13 +23,27 @@ export function userData(user) {
     followers_count: Number.isSafeInteger(user.followersCount) && user.followersCount >= 0 ? user.followersCount : null};
 }
 
+export function fullTweetText(tweet) {
+  const note = tweet?.raw?.note_tweet?.note_tweet_results?.result?.text;
+  if (typeof note === 'string' && note) return note;
+  return typeof tweet?.fullText === 'string' ? tweet.fullText : '';
+}
+
+function originalData(tweet, depth = 0) {
+  const data = {id:tweet.id,text:fullTweetText(tweet),author:tweet.tweetBy?.userName,
+    name:tweet.tweetBy?.fullName,avatar:tweet.tweetBy?.profileImage,url:tweet.url};
+  if (tweet.quoted && depth < 2) data.quoted = originalData(tweet.quoted, depth + 1);
+  return data;
+}
+
 export function tweetData(tweet) {
   const original = tweet.retweetedTweet || tweet.quoted;
   const kind = tweet.retweetedTweet ? 'repost' : tweet.quoted ? 'quote' : tweet.replyTo ? 'reply' : 'post';
   const context = {reply_to:tweet.replyTo || null};
-  if (original) context.original = {id:original.id,text:original.fullText,author:original.tweetBy?.userName,
-    name:original.tweetBy?.fullName,avatar:original.tweetBy?.profileImage,url:original.url};
-  return {id: tweet.id, text: tweet.fullText, created_at: tweet.createdAt,
+  if (original) context.original = originalData(original);
+  // X's outer RT text is only a shortened preview of the original caption.
+  const text = tweet.retweetedTweet ? fullTweetText(original) || fullTweetText(tweet) : fullTweetText(tweet);
+  return {id: tweet.id, text, created_at: tweet.createdAt,
     favorite_count: tweet.likeCount, retweet_count: tweet.retweetCount,
     reply_count: tweet.replyCount, view_count: tweet.viewCount,kind,
     author:tweet.tweetBy?.userName,author_name:tweet.tweetBy?.fullName,avatar:tweet.tweetBy?.profileImage,
