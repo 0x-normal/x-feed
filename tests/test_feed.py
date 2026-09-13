@@ -122,3 +122,25 @@ def test_feed_filters_search_and_stable_pagination(store):
     assert len({r['key'] for r in first['items']+second['items']})==4
     assert second['next'] is None
     with pytest.raises(ValueError):store.feed('invalid')
+
+
+def test_hidden_types_are_removed_before_pagination_and_can_be_restored(store):
+    posts = [dict(id=str(i), text='example', url='https://x.com/i/status/'+str(i),
+                  kind='reply' if i >= 4 else ['post', 'quote', 'repost', 'post'][i],
+                  published_at=100+i) for i in range(70)]
+    store.save_posts('target', posts, True)
+    store.save_recent_following('target', users(1), 1)
+    store.save_recent_following('target', users(2, 1), 2)
+    first = store.feed(exclude=['reply'], limit=2)
+    second = store.feed(exclude=['reply'], limit=2, before=first['next'])
+    third = store.feed(exclude=['reply'], limit=2, before=second['next'])
+    visible = first['items'] + second['items'] + third['items']
+    assert len(visible) == len({r['key'] for r in visible}) == 5
+    assert {r['kind'] for r in visible} == {'post', 'quote', 'repost', 'follow'}
+    assert third['next'] is None
+    assert store.feed(kind='reply', exclude=['reply']) == {'items': [], 'next': None}
+    assert {r['kind'] for r in store.feed(exclude=['reply', 'quote', 'follow'])['items']} == {'post', 'repost'}
+    assert store.feed(exclude=['post','reply','quote','repost','follow']) == {'items': [], 'next': None}
+    assert store.feed(kind='reply')['items']
+    with pytest.raises(ValueError):
+        store.feed(exclude=['invalid'])

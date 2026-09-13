@@ -233,13 +233,20 @@ class Store:
                             (target,'recent_following',1,len(ordered),now,pages_read))
         return 'ok'
 
-    def feed(self, kind='all', target=None, query='', before=None, limit=50):
-        if kind not in {'all','post','reply','repost','quote','follow'}:
+    def feed(self, kind='all', target=None, query='', before=None, limit=50, exclude=None):
+        kinds = {'post','reply','repost','quote','follow'}
+        if kind not in kinds | {'all'}:
             raise ValueError('Unknown feed filter.')
+        excluded = set(exclude or ())
+        if not excluded <= kinds:
+            raise ValueError('Unknown excluded activity type.')
         limit = min(max(int(limit),1),100)
         conditions, args = ['1=1'], []
         if kind != 'all':
             conditions.append('kind=?'); args.append(kind)
+        if excluded:
+            conditions.append('kind NOT IN (' + ','.join('?' for _ in excluded) + ')')
+            args.extend(sorted(excluded))
         if target:
             conditions.append('target=?'); args.append(handle(target))
         if query:

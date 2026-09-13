@@ -68,6 +68,21 @@ def test_local_access_preserved_and_unknown_host_rejected(dashboard):
     assert request(dashboard, headers={"Host": "evil.test", "X-Feed-Proxy-Token": TOKEN})[0] == 403
 
 
+def test_api_supports_multiple_excluded_types(dashboard, tmp_path):
+    store = Store(tmp_path / 'data')
+    try:
+        store.add_target('target')
+        store.save_posts('target', [dict(id=str(i), text='sample', kind=kind,
+                         url='https://x.com/i/status/'+str(i), published_at=100+i)
+                         for i, kind in enumerate(['post', 'reply', 'quote', 'repost'])], True)
+    finally:
+        store.close()
+    status, body, _ = request(dashboard, '/api/feed?exclude=reply&exclude=quote')
+    assert status == 200
+    assert {r['kind'] for r in json.loads(body)['items']} == {'post', 'repost'}
+    assert request(dashboard, '/api/feed?exclude=invalid')[0] == 400
+
+
 @pytest.mark.parametrize("origin,token", [
     ("http://example.org", TOKEN), (PUBLIC_ORIGIN + "/", TOKEN),
     ("https://user:password@example.org", TOKEN), (PUBLIC_ORIGIN, ""),

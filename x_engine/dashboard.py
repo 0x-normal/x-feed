@@ -92,7 +92,7 @@ def server(directory, port=8765):
                 elif route.path == '/api/feed':
                     q=parse_qs(route.query)
                     data=store.feed(kind=q.get('kind',['all'])[0],target=q.get('target',[None])[0],
-                        query=q.get('q',[''])[0],before=q.get('before',[None])[0])
+                        query=q.get('q',[''])[0],before=q.get('before',[None])[0],exclude=q.get('exclude',[]))
                     self.send(200,json.dumps(data,ensure_ascii=False))
                 elif route.path == "/api/export":
                     query = parse_qs(route.query)
