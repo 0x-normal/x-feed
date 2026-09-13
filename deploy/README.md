@@ -22,6 +22,8 @@ The x-feed repository is public, so cloning and pulling over HTTPS require no Gi
 
 Preparation installs Python/venv and a dedicated Node 22.23.2 runtime from nodejs.org with checksum verification. It does not replace the VPS's global Node installation. The installer refuses to overwrite an existing /opt/x-engine installation. GitHub contains application code only; your data must be transferred separately.
 
+If installation fails before the services are installed, fix the reported error, pull the latest code, and run `bash deploy/install.sh --resume`. This checks that /opt/x-engine contains this application before continuing and preserves the data directory. The Ubuntu dependency install omits the optional Windows Node runtime because Linux already has its dedicated runtime.
+
 ### Future updates
 
 Push your changes from your PC. Then run on the VPS:

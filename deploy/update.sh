@@ -16,7 +16,7 @@ for item in package.json package-lock.json bridge.mjs; do
 done
 /opt/x-engine/.venv/bin/python -m pip install -e /opt/x-engine
 cd /opt/x-engine/tools/rettiwt
-npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+npm ci --omit=dev --omit=optional --ignore-scripts --no-audit --no-fund
 install -m 644 "$source_dir/deploy/x-engine-worker.service" /etc/systemd/system/
 install -m 644 "$source_dir/deploy/x-engine-dashboard.service" /etc/systemd/system/
 systemctl daemon-reload
