@@ -29,9 +29,40 @@ export function fullTweetText(tweet) {
   return typeof tweet?.fullText === 'string' ? tweet.fullText : '';
 }
 
+function mediaURL(value, host) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === host && !url.username && !url.password && !url.port ? url.href : '';
+  } catch { return ''; }
+}
+
+export function mediaData(tweet) {
+  const raw = tweet?.raw?.legacy;
+  const media = raw?.extended_entities?.media ?? raw?.entities?.media ?? tweet?.media;
+  if (!Array.isArray(media)) return [];
+  return media.slice(0, 4).flatMap(item => {
+    if (!item || typeof item !== 'object') return [];
+    const type = {photo:'photo', video:'video', animated_gif:'gif', PHOTO:'photo', VIDEO:'video', GIF:'gif'}[item.type];
+    if (!type) return [];
+    const poster = mediaURL(item.media_url_https || item.thumbnailUrl, 'pbs.twimg.com');
+    let url;
+    if (type === 'photo') url = mediaURL(item.media_url_https || item.url, 'pbs.twimg.com');
+    else {
+      const variants = Array.isArray(item.video_info?.variants) ? item.video_info.variants : [];
+      const playable = variants.filter(v => v?.content_type === 'video/mp4' && mediaURL(v.url, 'video.twimg.com'))
+        .sort((a, b) => (Number(b.bitrate) || 0) - (Number(a.bitrate) || 0));
+      url = mediaURL(playable[0]?.url || item.url, 'video.twimg.com');
+      if (url && !new URL(url).pathname.toLowerCase().endsWith('.mp4')) url = '';
+    }
+    if (!url && !poster) return [];
+    return [{type, url, poster: type === 'photo' ? '' : poster,
+      alt: typeof item.ext_alt_text === 'string' ? item.ext_alt_text : ''}];
+  });
+}
+
 function originalData(tweet, depth = 0) {
   const data = {id:tweet.id,text:fullTweetText(tweet),author:tweet.tweetBy?.userName,
-    name:tweet.tweetBy?.fullName,avatar:tweet.tweetBy?.profileImage,url:tweet.url};
+    name:tweet.tweetBy?.fullName,avatar:tweet.tweetBy?.profileImage,url:tweet.url,media:mediaData(tweet)};
   if (tweet.quoted && depth < 2) data.quoted = originalData(tweet.quoted, depth + 1);
   return data;
 }
@@ -39,7 +70,7 @@ function originalData(tweet, depth = 0) {
 export function tweetData(tweet) {
   const original = tweet.retweetedTweet || tweet.quoted;
   const kind = tweet.retweetedTweet ? 'repost' : tweet.quoted ? 'quote' : tweet.replyTo ? 'reply' : 'post';
-  const context = {reply_to:tweet.replyTo || null};
+  const context = {reply_to:tweet.replyTo || null, media:tweet.retweetedTweet ? [] : mediaData(tweet)};
   if (original) context.original = originalData(original);
   // X's outer RT text is only a shortened preview of the original caption.
   const text = tweet.retweetedTweet ? fullTweetText(original) || fullTweetText(tweet) : fullTweetText(tweet);

@@ -54,7 +54,7 @@ def server(directory, port=8765):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("X-Frame-Options", "DENY")
-            self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' https://pbs.twimg.com https://abs.twimg.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+            self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' https://pbs.twimg.com https://abs.twimg.com; media-src https://video.twimg.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
             if download:
                 self.send_header("Content-Disposition", f'attachment; filename="{download}"')
             self.end_headers()

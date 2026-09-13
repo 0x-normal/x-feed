@@ -68,6 +68,14 @@ def test_local_access_preserved_and_unknown_host_rejected(dashboard):
     assert request(dashboard, headers={"Host": "evil.test", "X-Feed-Proxy-Token": TOKEN})[0] == 403
 
 
+def test_media_policy_allows_x_video_cdn(dashboard):
+    status, _, headers = request(dashboard)
+    assert status == 200
+    policy = headers['Content-Security-Policy']
+    assert 'media-src https://video.twimg.com;' in policy
+    assert "img-src 'self' https://pbs.twimg.com https://abs.twimg.com;" in policy
+
+
 def test_api_supports_multiple_excluded_types(dashboard, tmp_path):
     store = Store(tmp_path / 'data')
     try:

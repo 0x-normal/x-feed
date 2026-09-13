@@ -5,7 +5,7 @@ import pytest
 from x_engine.accounts import Account, import_files
 from x_engine.store import Store
 from x_engine.worker import verify_accounts
-from x_engine.provider import user_data
+from x_engine.provider import user_data, post_data
 
 
 def test_follow_profile_details_survive_collection_and_feed(store):
@@ -19,6 +19,19 @@ def test_follow_profile_details_survive_collection_and_feed(store):
     assert len(store.feed('follow')['items']) == 1
     assert user_data(SimpleNamespace(id='3', screen_name='zero', name='Zero', followers_count=0))['followers_count'] == 0
     assert user_data(SimpleNamespace(id='4', screen_name='unknown', name='Unknown'))['followers_count'] is None
+
+
+def test_media_survives_collection_storage_and_refresh(store):
+    media = [{'type':'video', 'url':'https://video.twimg.com/example.mp4',
+              'poster':'https://pbs.twimg.com/media/example.jpg', 'alt':'Example clip'}]
+    context = {'media':media, 'original':{'id':'2', 'media':media}}
+    post = post_data(SimpleNamespace(id='1', text='A clip', created_at='', favorite_count=1,
+        retweet_count=0, reply_count=0, context=context, kind='quote'))
+    store.save_posts('target', [dict(post, context={})], True)
+    store.save_posts('target', [post], True)
+    items = store.feed()['items']
+    assert len(items) == 1
+    assert json.loads(items[0]['context']) == context
 
 
 @pytest.fixture

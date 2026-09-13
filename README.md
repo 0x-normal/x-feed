@@ -50,7 +50,7 @@ Only the reference project's following-detection strategy is applied. The local 
 
 ## Post coverage
 
-Each check fetches one recent timeline page and one recent replies page, requesting 20 entries each. X conversation context from other authors is filtered out. Results are merged by post ID and classified as post, reply, repost, or quote; metrics refresh on subsequent checks. The first fetch includes recent existing posts so the feed is useful immediately. There is no crawl of complete post history, and a busy account can publish more than these windows capture between checks. Deleted content is not removed automatically. Image/video attachments currently open through View on X rather than rendering in the feed.
+Each check fetches one recent timeline page and one recent replies page, requesting 20 entries each. X conversation context from other authors is filtered out. Results are merged by post ID and classified as post, reply, repost, or quote; metrics refresh on subsequent checks. The first fetch includes recent existing posts so the feed is useful immediately. There is no crawl of complete post history, and a busy account can publish more than these windows capture between checks. Deleted content is not removed automatically. Images display inside feed cards; videos and GIFs play inline with controls (GIFs loop silently). Media is included for replies, reposts, and quoted posts. Images open at full size when clicked. Existing posts gain attachments when fetched again; older posts outside the recent collection window keep their previous content. Unavailable media can still be opened through View on X.
 
 HTTP 429 sets a persistent global cooldown and respects the supplied reset time. The system does not rotate accounts to evade limits. Invalid, locked, or suspended sessions need attention; network failures back off. A changed X user ID for the same handle stops comparisons.
 
@@ -91,6 +91,7 @@ The feed's **Sound** switch is off by default and remembers its setting in the c
 .\.venv\Scripts\python.exe -m pytest -q
 .\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\bridge.test.mjs
 .\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\dashboard.test.mjs
+.\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\media.test.mjs
 .\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\sound.test.mjs
 ```
 
