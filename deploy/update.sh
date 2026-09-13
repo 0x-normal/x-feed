@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ $EUID -ne 0 ]]; then echo 'Run with sudo bash deploy/update.sh'; exit 1; fi
-export PATH="/opt/x-engine-node/bin:/usr/local/bin:/usr/bin:/bin"
+export PATH="/opt/x-engine-node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 source_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ ! -x /opt/x-engine/.venv/bin/python ]]; then echo 'Run install.sh first.'; exit 1; fi
 if [[ "$source_dir" == /opt/x-engine ]]; then echo 'Run from your separate Git checkout.'; exit 1; fi

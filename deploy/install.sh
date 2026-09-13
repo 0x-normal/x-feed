@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ $EUID -ne 0 ]]; then echo 'Run with sudo bash deploy/install.sh'; exit 1; fi
-export PATH="/opt/x-engine-node/bin:/usr/local/bin:/usr/bin:/bin"
+export PATH="/opt/x-engine-node/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 python3 -c 'import sys; assert sys.version_info >= (3,11), "Python 3.11+ required"'
 /opt/x-engine-node/bin/node -e 'if(Number(process.versions.node.split(".")[0])<22)throw Error("Run prepare-ubuntu.sh first")'
 command -v npm >/dev/null
