@@ -21,15 +21,16 @@ def source(tmp_path):
     return store
 
 
-def test_encrypted_transfer_preserves_sessions_baselines_and_exclusions(tmp_path):
+@pytest.mark.parametrize('passphrase',[PASSPHRASE,None])
+def test_transfer_preserves_sessions_baselines_and_exclusions(tmp_path,passphrase):
     store=source(tmp_path)
     bundle=tmp_path/'backup.xengine'
     try:
-        export_bundle(store.directory,bundle,PASSPHRASE)
+        export_bundle(store.directory,bundle,passphrase)
         assert b'synthetic-secret' not in bundle.read_bytes()
         assert b'synthetic-cookie' not in bundle.read_bytes()
         assert store.setting('worker_heartbeat')=='123'
-        restore_bundle(bundle,tmp_path/'restored',PASSPHRASE)
+        restore_bundle(bundle,tmp_path/'restored',passphrase)
         restored=Store(tmp_path/'restored')
         try:
             assert restored.credentials('login')['password']=='synthetic-secret'
@@ -63,4 +64,21 @@ def test_export_requires_stopped_collector(tmp_path):
     try:
         with worker_lock(store.directory):
             with pytest.raises(ValueError):export_bundle(store.directory,tmp_path/'backup.xengine',PASSPHRASE)
+    finally:store.close()
+
+
+def test_passphrase_mode_must_match_and_portable_key_is_validated(tmp_path):
+    store=source(tmp_path)
+    try:
+        bundle=tmp_path/'portable.xengine'
+        export_bundle(store.directory,bundle,None)
+        with pytest.raises(ValueError):restore_bundle(bundle,tmp_path/'mismatch',PASSPHRASE)
+        encrypted=tmp_path/'encrypted.xengine'
+        export_bundle(store.directory,encrypted,PASSPHRASE)
+        with pytest.raises(ValueError):restore_bundle(encrypted,tmp_path/'encrypted-mismatch',None)
+        data=json.loads(bundle.read_bytes())
+        data['payload']['key']='invalid-key'
+        bundle.write_text(json.dumps(data))
+        with pytest.raises(ValueError):restore_bundle(bundle,tmp_path/'invalid',None)
+        assert not (tmp_path/'invalid').exists()
     finally:store.close()

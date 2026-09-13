@@ -1,4 +1,4 @@
-"""Passphrase-encrypted, cross-platform transfer of the database and vault key."""
+"""Cross-platform database transfer, with optional passphrase protection."""
 import argparse
 import base64
 import getpass
@@ -32,8 +32,8 @@ def export_bundle(directory, output, passphrase):
     output=Path(output)
     if output.exists():raise ValueError('Output already exists.')
     if not (Path(directory)/'engine.sqlite3').is_file():raise ValueError('Source database not found.')
-    salt=os.urandom(16)
-    wrapper=Fernet(wrapping_key(passphrase,salt))
+    salt=os.urandom(16) if passphrase is not None else None
+    wrapper=Fernet(wrapping_key(passphrase,salt)) if salt is not None else None
     store=Store(directory)
     try:
         with worker_lock(store.directory):
@@ -56,7 +56,12 @@ def export_bundle(directory, output, passphrase):
             protected=key_path.read_bytes()
             key=_dpapi(protected,True) if os.name=='nt' else protected
             payload=json.dumps({'database':base64.b64encode(database).decode(),'key':key.decode()}).encode()
-            envelope={'version':1,'salt':base64.b64encode(salt).decode(),'token':wrapper.encrypt(payload).decode()}
+            if wrapper:
+                envelope={'version':1,'salt':base64.b64encode(salt).decode(),'token':wrapper.encrypt(payload).decode()}
+            else:
+                # Explicit portable mode: the key travels with the database.
+                # This is not encrypted protection for the transfer file.
+                envelope={'version':2,'protection':'none','payload':json.loads(payload)}
             write_private(output,json.dumps(envelope).encode())
     finally:store.close()
 
@@ -66,11 +71,14 @@ def restore_bundle(source, directory, passphrase):
     if directory.exists():raise ValueError('Restore requires a new data directory; existing data is never overwritten.')
     try:
         envelope=json.loads(Path(source).read_bytes())
-        if envelope['version']!=1:raise ValueError()
-        salt=base64.b64decode(envelope['salt'],validate=True)
-        if len(salt)!=16:raise ValueError()
-        wrapper=Fernet(wrapping_key(passphrase,salt))
-        payload=json.loads(wrapper.decrypt(envelope['token'].encode()))
+        if envelope['version']==2 and envelope.get('protection')=='none' and passphrase is None:
+            payload=envelope['payload']
+        elif envelope['version']==1 and passphrase is not None:
+            salt=base64.b64decode(envelope['salt'],validate=True)
+            if len(salt)!=16:raise ValueError()
+            wrapper=Fernet(wrapping_key(passphrase,salt))
+            payload=json.loads(wrapper.decrypt(envelope['token'].encode()))
+        else:raise ValueError()
         database=base64.b64decode(payload['database'],validate=True)
         key=payload['key'].encode()
         cipher=Fernet(key)
@@ -101,14 +109,17 @@ def main():
     parser.add_argument('operation',choices=['export','restore'])
     parser.add_argument('bundle',type=Path)
     parser.add_argument('--data-dir',type=Path,default=Path('data'))
+    parser.add_argument('--no-passphrase',action='store_true',help='Portable file with its vault key included; keep the file private.')
     args=parser.parse_args()
     try:
-        passphrase=getpass.getpass('Transfer passphrase (at least 16 characters): ')
+        passphrase=None if args.no_passphrase else getpass.getpass('Transfer passphrase (at least 16 characters): ')
         if args.operation=='export':
-            if getpass.getpass('Confirm passphrase: ')!=passphrase:raise ValueError('Passphrases do not match.')
+            if not args.no_passphrase and getpass.getpass('Confirm passphrase: ')!=passphrase:raise ValueError('Passphrases do not match.')
             export_bundle(args.data_dir,args.bundle,passphrase)
         else:restore_bundle(args.bundle,args.data_dir,passphrase)
-        print('Encrypted transfer saved.' if args.operation=='export' else 'Data restored. Start the VPS services when ready.')
+        if args.operation=='export':
+            print('Portable transfer saved with its vault key. Keep this file private.' if args.no_passphrase else 'Encrypted transfer saved.')
+        else:print('Data restored. Start the VPS services when ready.')
     except (ValueError,OSError) as exc:
         parser.exit(2,str(exc)+'\n')
 

@@ -65,6 +65,10 @@ journalctl -u x-engine-worker -n 30 --no-pager
 
 Enter the same passphrase at restore. Restore requires a new data directory and verifies the database and encrypted account records before writing it. The installer enables both services at boot. Do not run the local and VPS collectors simultaneously with the same copied sessions.
 
+### Optional transfer without a passphrase
+
+Add `--no-passphrase` to both the local export command and the VPS restore command to skip the passphrase prompts. This portable file contains the vault key alongside the database; anyone with the file can access its sessions. Transfer it privately through SFTP and do not publish it. The file remains excluded from Git. Existing destination directories and output files are never overwritten in either mode.
+
 ## 3. Open your private feed
 
 With the local dashboard stopped, open a PowerShell terminal:
