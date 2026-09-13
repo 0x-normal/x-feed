@@ -1,0 +1,29 @@
+[Unit]
+Description=X Engine activity collector
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+ConditionPathExists=/var/lib/x-engine/data/engine.sqlite3
+
+[Service]
+Type=simple
+User=xengine
+Group=xengine
+WorkingDirectory=/opt/x-engine
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PATH=/opt/x-engine/.venv/bin:/opt/x-engine-node/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/opt/x-engine/.venv/bin/python -m x_engine --data-dir /var/lib/x-engine/data run
+Restart=always
+RestartSec=15
+KillSignal=SIGINT
+TimeoutStopSec=40
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/x-engine
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+[Unit]
+Description=X Engine private dashboard
+After=network.target
+StartLimitIntervalSec=0
+ConditionPathExists=/var/lib/x-engine/data/engine.sqlite3
+
+[Service]
+Type=simple
+User=xengine
+Group=xengine
+WorkingDirectory=/opt/x-engine
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/x-engine/.venv/bin/python -m x_engine --data-dir /var/lib/x-engine/data dashboard --port 8765
+Restart=always
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/x-engine
+
+[Install]
+WantedBy=multi-user.target
