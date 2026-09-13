@@ -1,4 +1,4 @@
-# Run X Engine on Ubuntu 24.04
+# Run X Feed on Ubuntu 24.04
 
 Use a server running Ubuntu 24.04 with SSH access. Replace VPS_IP below with its address. Server installation and service startup must be verified on your VPS.
 
@@ -12,8 +12,8 @@ In your VPS terminal, install Git if needed, then clone the repository:
 apt-get update
 apt-get install -y git
 cd /root
-git clone https://github.com/0x-normal/x-feed.git x-engine-release
-cd /root/x-engine-release
+git clone https://github.com/0x-normal/x-feed.git x-feed
+cd /root/x-feed
 bash deploy/prepare-ubuntu.sh
 bash deploy/install.sh
 ```
@@ -27,7 +27,7 @@ Preparation installs Python/venv and a dedicated Node 22.23.2 runtime from nodej
 Push your changes from your PC. Then run on the VPS:
 
 ```bash
-cd /root/x-engine-release
+cd /root/x-feed
 git pull --ff-only
 bash deploy/update.sh
 ```

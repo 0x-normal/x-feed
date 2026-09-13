@@ -1,5 +1,5 @@
 [Unit]
-Description=X Engine activity collector
+Description=X Feed activity collector
 Wants=network-online.target
 After=network-online.target
 StartLimitIntervalSec=0

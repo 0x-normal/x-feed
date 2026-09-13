@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "x-engine"
 version = "0.1.0"
-description = "Local X post and following monitor with an encrypted account vault"
+description = "X Feed: X activity tracking with an encrypted account vault"
 requires-python = ">=3.11"
 dependencies = ["twifork==2.4.0", "cryptography>=46,<49"]
 
@@ -13,6 +13,7 @@ dependencies = ["twifork==2.4.0", "cryptography>=46,<49"]
 test = ["pytest>=8,<10"]
 
 [project.scripts]
+x-feed = "x_engine.cli:main"
 x-engine = "x_engine.cli:main"
 
 [tool.setuptools.package-data]

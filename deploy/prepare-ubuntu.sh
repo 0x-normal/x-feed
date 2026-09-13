@@ -26,4 +26,4 @@ sha256sum --check selected-sha256.txt
 install -d -m 755 /opt/x-engine-node
 tar -xJf "$node_archive" --strip-components=1 -C /opt/x-engine-node
 /opt/x-engine-node/bin/node --version
-echo "Node installed for X Engine only. Download files remain in $download_dir."
+echo "Node installed for X Feed only. Download files remain in $download_dir."

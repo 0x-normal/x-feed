@@ -1,5 +1,5 @@
 [Unit]
-Description=X Engine private dashboard
+Description=X Feed private dashboard
 After=network.target
 StartLimitIntervalSec=0
 ConditionPathExists=/var/lib/x-engine/data/engine.sqlite3

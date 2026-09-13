@@ -1,5 +1,5 @@
 {
-  "name": "x-engine-rettiwt-probe",
+  "name": "x-feed-rettiwt",
   "private": true,
   "type": "module",
   "description": "Bounded read-only compatibility test for Rettiwt",

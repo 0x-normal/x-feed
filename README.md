@@ -1,4 +1,4 @@
-# X Engine
+# X Feed
 
 A local X activity feed with profiles you choose, category filters, search, pause/resume, and CSV export.
 
