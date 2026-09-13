@@ -100,6 +100,11 @@ def test_real_caddy_authenticates_all_routes_and_preserves_csrf(dashboard, tmp_p
     issuer = config["apps"]["tls"]["automation"]["policies"][0]["issuers"][0]
     assert issuer["module"] == "acme" and issuer["profile"] == "shortlived"
     assert issuer["ca"] == "https://acme-v02.api.letsencrypt.org/directory"
+    assert issuer["challenges"]["http"]["disabled"] is True
+    assert not issuer["challenges"].get("tls-alpn", {}).get("disabled", False)
+    production_server = config["apps"]["http"]["servers"]["srv0"]
+    assert production_server["listen"] == [":443"]
+    assert production_server["automatic_https"]["disable_redirects"] is True
     # Exercise production authentication/proxy routes on a temporary local HTTP
     # listener. Do not issue certificates or modify the machine's trust store.
     with socket.socket() as free_port:

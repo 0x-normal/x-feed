@@ -89,7 +89,7 @@ git pull --ff-only
 bash deploy/enable-web.sh 43.106.141.82
 ```
 
-Use your own public IPv4 address if different. Choose a website password at the hidden prompt (12–72 ASCII characters). The browser username is `xfeed`; this password is separate from SSH and the X accounts. Allow inbound **TCP 80 and 443** in your hosting provider's security group. The installer also allows these ports if UFW is already active; it does not enable or reset a firewall. Keep port 8765 private.
+Use your own public IPv4 address if different. Choose a website password at the hidden prompt (12–72 ASCII characters). The browser username is `xfeed`; this password is separate from SSH and the X accounts. Allow inbound **TCP 443** in your hosting provider's security group. The installer also allows this port if UFW is already active; it does not enable or reset a firewall. Keep port 8765 private.
 
 Once the installer reports `Ready`, open **https://43.106.141.82/** in Chrome and enter the website login. You can bookmark it and close Termius. The website and collector start at boot. If HTTPS is still pending, check the provider's firewall and run:
 
@@ -98,9 +98,9 @@ journalctl -u x-feed-web -n 40 --no-pager
 systemctl restart x-feed-web
 ```
 
-The installer uses a dedicated, checksum-pinned Caddy 2.11.4 binary, service user, and `x-feed-web.service`. It stops before installation if ports 80/443 are occupied, so existing websites can be integrated separately. It only restarts the dashboard, preserving collector operation and stored data. It does not start the Windows collector. An existing website installation is not overwritten by rerunning the installer.
+The installer uses a dedicated, checksum-pinned Caddy 2.11.4 binary, service user, and `x-feed-web.service`. It stops before installation if port 443 is occupied, so existing websites can be integrated separately. It only restarts the dashboard, preserving collector operation and stored data. It does not start the Windows collector. An existing website installation is not overwritten by rerunning the installer.
 
-Caddy requests a trusted Let's Encrypt IP certificate using the `shortlived` profile and renews it automatically. Both ports must remain reachable for certificate validation and browser access. HTTPS certificate issuance must still succeed from your VPS; a local configuration test cannot verify your provider's routing or firewall. [Let's Encrypt IP certificates](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability/), [Caddy TLS configuration](https://caddyserver.com/docs/caddyfile/directives/tls).
+Caddy requests a trusted Let's Encrypt IP certificate using the `shortlived` profile and renews it automatically. TCP 443 must remain reachable for certificate validation and browser access. Certificate validation uses TLS-ALPN on port 443; HTTP challenges and automatic HTTP redirects are disabled, leaving port 80 available for another app. Always open the full `https://` URL; plain `http://` may lead to that other app. HTTPS certificate issuance must still succeed from your VPS; a local configuration test cannot verify your provider's routing or firewall. [Let's Encrypt IP certificates](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability/), [Caddy TLS configuration](https://caddyserver.com/docs/caddyfile/directives/tls).
 
 All feed pages, exports, and API routes require browser authentication at the proxy. Caddy stores a password hash and attaches a private proxy token to backend requests. The dashboard stays bound to loopback and checks the configured HTTPS origin on mutations. Configuration and the token live in `/etc/x-feed-web`, certificates in `/var/lib/x-feed-web`; none belongs in Git. Future `deploy/update.sh` runs preserve the website configuration and dashboard environment drop-in.
 

@@ -1,5 +1,6 @@
 {
     admin off
+    auto_https disable_redirects
     default_sni __HOST__
 }
 
@@ -8,6 +9,7 @@ https://__HOST__ {
         issuer acme {
             dir https://acme-v02.api.letsencrypt.org/directory
             profile shortlived
+            disable_http_challenge
         }
     }
     basic_auth {

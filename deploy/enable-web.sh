@@ -28,10 +28,10 @@ systemctl is-active --quiet x-engine-dashboard || { echo 'Start x-engine-dashboa
 for dependency in ss curl tar sha512sum; do
     command -v "$dependency" >/dev/null || { echo "Missing command: $dependency"; exit 1; }
 done
-occupied="$(ss -H -ltnp '( sport = :80 or sport = :443 )')"
+occupied="$(ss -H -ltnp '( sport = :443 )')"
 udp_occupied="$(ss -H -lunp '( sport = :443 )')"
 if [[ -n "$occupied$udp_occupied" ]]; then
-    echo 'Ports 80 or 443 are already in use. Existing websites were left running.'
+    echo 'Port 443 is already in use. Existing websites were left running.'
     printf '%s\n%s\n' "$occupied" "$udp_occupied"
     echo 'Share this output so X Feed can be added to the existing web server.'
     exit 1
@@ -95,7 +95,6 @@ systemctl daemon-reload
 systemctl restart x-engine-dashboard
 systemctl is-active --quiet x-engine-dashboard
 if command -v ufw >/dev/null && ufw status | grep -q '^Status: active'; then
-    ufw allow 80/tcp
     ufw allow 443/tcp
 fi
 systemctl enable --now x-feed-web
@@ -111,7 +110,7 @@ for attempt in {1..12}; do
     sleep 2
 done
 echo 'Website service installed, but trusted HTTPS is not confirmed yet.'
-echo 'Allow inbound TCP 80 and 443 in your VPS provider security group/firewall.'
+echo 'Allow inbound TCP 443 in your VPS provider security group/firewall.'
 echo 'Leave port 8765 private. Caddy retries certificate issuance automatically.'
 echo 'Check: journalctl -u x-feed-web -n 40 --no-pager'
 exit 1
