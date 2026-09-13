@@ -77,7 +77,40 @@ With the local dashboard stopped, open a PowerShell terminal:
 ssh -N -L 127.0.0.1:8765:127.0.0.1:8765 root@VPS_IP
 ```
 
-Then open http://127.0.0.1:8765 in your browser. Keep that terminal connected while viewing. Closing the tunnel only disconnects viewing; the VPS collector continues. Port 8765 does not need to be opened in the VPS firewall. The current dashboard has no internet-facing login layer, so it should remain behind SSH.
+Then open http://127.0.0.1:8765 in your browser. Keep that terminal connected while viewing. Closing the tunnel only disconnects viewing; the VPS collector continues. Port 8765 does not need to be opened in the VPS firewall.
+
+### Normal website access without an SSH tunnel
+
+On the VPS, after restoring data and starting the dashboard:
+
+```bash
+cd /root/x-feed
+git pull --ff-only
+bash deploy/enable-web.sh 43.106.141.82
+```
+
+Use your own public IPv4 address if different. Choose a website password at the hidden prompt (12–72 ASCII characters). The browser username is `xfeed`; this password is separate from SSH and the X accounts. Allow inbound **TCP 80 and 443** in your hosting provider's security group. The installer also allows these ports if UFW is already active; it does not enable or reset a firewall. Keep port 8765 private.
+
+Once the installer reports `Ready`, open **https://43.106.141.82/** in Chrome and enter the website login. You can bookmark it and close Termius. The website and collector start at boot. If HTTPS is still pending, check the provider's firewall and run:
+
+```bash
+journalctl -u x-feed-web -n 40 --no-pager
+systemctl restart x-feed-web
+```
+
+The installer uses a dedicated, checksum-pinned Caddy 2.11.4 binary, service user, and `x-feed-web.service`. It stops before installation if ports 80/443 are occupied, so existing websites can be integrated separately. It only restarts the dashboard, preserving collector operation and stored data. It does not start the Windows collector. An existing website installation is not overwritten by rerunning the installer.
+
+Caddy requests a trusted Let's Encrypt IP certificate using the `shortlived` profile and renews it automatically. Both ports must remain reachable for certificate validation and browser access. HTTPS certificate issuance must still succeed from your VPS; a local configuration test cannot verify your provider's routing or firewall. [Let's Encrypt IP certificates](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability/), [Caddy TLS configuration](https://caddyserver.com/docs/caddyfile/directives/tls).
+
+All feed pages, exports, and API routes require browser authentication at the proxy. Caddy stores a password hash and attaches a private proxy token to backend requests. The dashboard stays bound to loopback and checks the configured HTTPS origin on mutations. Configuration and the token live in `/etc/x-feed-web`, certificates in `/var/lib/x-feed-web`; none belongs in Git. Future `deploy/update.sh` runs preserve the website configuration and dashboard environment drop-in.
+
+To disable website access while continuing collection:
+
+```bash
+systemctl disable --now x-feed-web
+```
+
+To change the website password, run `/opt/x-feed-web/caddy hash-password` interactively, replace only the hash on the `xfeed` line in `/etc/x-feed-web/Caddyfile`, validate with `/opt/x-feed-web/caddy validate --config /etc/x-feed-web/Caddyfile --adapter caddyfile`, then restart `x-feed-web`. Do not share the configuration file: it also contains the private proxy token.
 
 ## Operations
 
@@ -95,5 +128,7 @@ For an encrypted backup, stop the worker, run the export command as xengine with
 ## Validation status
 
 The transfer round trip, credential preservation, baseline preservation, exclusions, wrong-passphrase rejection, and overwrite protections were tested locally with synthetic data. Ubuntu service startup, runtime installation, live VPS authentication, and remote restore still require successful SSH access.
+
+Public website tests cover proxy-token enforcement, exact HTTPS origin checks, and authenticated feed access through the real Caddy proxy on a temporary local listener. Set `X_FEED_TEST_CADDY` to a Caddy 2.11.4 executable when running `tests/test_dashboard_web.py` to include this integration test. TLS configuration is validated without requesting a certificate during tests; live issuance and systemd behavior need verification on the VPS.
 
 References: [Node release](https://nodejs.org/en/download/archive/v22.23.2), [systemd services](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html), [SSH forwarding](https://man.openbsd.org/ssh).

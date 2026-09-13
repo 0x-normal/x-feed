@@ -1,0 +1,26 @@
+[Unit]
+Description=X Feed HTTPS website
+Wants=network-online.target
+After=network-online.target x-engine-dashboard.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+User=xfeedweb
+Group=xfeedweb
+Environment=HOME=/var/lib/x-feed-web
+ExecStart=/opt/x-feed-web/caddy run --config /etc/x-feed-web/Caddyfile --adapter caddyfile
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/x-feed-web
+
+[Install]
+WantedBy=multi-user.target

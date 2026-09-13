@@ -1,0 +1,21 @@
+{
+    admin off
+    default_sni __HOST__
+}
+
+https://__HOST__ {
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+            profile shortlived
+        }
+    }
+    basic_auth {
+        xfeed __PASSWORD_HASH__
+    }
+    reverse_proxy 127.0.0.1:8765 {
+        header_up Host __HOST__
+        header_up X-Feed-Proxy-Token __PROXY_TOKEN__
+        header_up -Authorization
+    }
+}

@@ -1,6 +1,8 @@
 import csv
 import io
 import json
+import os
+import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -30,6 +32,16 @@ def export_data(store, table, format="json", target=None):
 
 
 def server(directory, port=8765):
+    public_origin = os.environ.get("X_FEED_PUBLIC_ORIGIN", "")
+    proxy_token = os.environ.get("X_FEED_PROXY_TOKEN", "")
+    public_url = urlparse(public_origin)
+    if public_origin or proxy_token:
+        if (public_url.scheme != "https" or not public_url.hostname or
+                public_url.username is not None or public_url.password is not None or
+                public_url.path or public_url.query or public_url.fragment or
+                public_origin != "https://" + public_url.netloc or len(proxy_token) < 32):
+            raise ValueError("Public access requires an HTTPS origin and a proxy token of at least 32 characters.")
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_args):
             pass
@@ -50,11 +62,17 @@ def server(directory, port=8765):
 
         def allowed(self, mutation=False):
             host = self.headers.get("Host", "")
-            allowed = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
-            if host not in allowed or self.headers.get("Sec-Fetch-Site") == "cross-site":
-                self.send(403, '{"error":"Local access only."}')
+            local_hosts = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
+            is_public = bool(public_origin) and host == public_url.netloc
+            if (host not in local_hosts and not is_public) or self.headers.get("Sec-Fetch-Site") == "cross-site":
+                self.send(403, '{"error":"Access denied."}')
                 return False
-            if mutation and (self.headers.get("Origin") != "http://" + host or
+            if is_public and not secrets.compare_digest(
+                    self.headers.get("X-Feed-Proxy-Token", "").encode(), proxy_token.encode()):
+                self.send(403, '{"error":"Access denied."}')
+                return False
+            expected_origin = public_origin if is_public else "http://" + host
+            if mutation and (self.headers.get("Origin") != expected_origin or
                              self.headers.get("Content-Type", "").split(";")[0] != "application/json"):
                 self.send(403, '{"error":"Same-origin JSON requests required."}')
                 return False
