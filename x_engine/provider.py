@@ -84,4 +84,7 @@ def post_data(post):
 
 
 def user_data(user):
-    return {"id": str(user.id), "username": user.screen_name, "name": user.name, 'avatar':getattr(user,'avatar','')}
+    followers = getattr(user, 'followers_count', None)
+    return {"id": str(user.id), "username": user.screen_name, "name": user.name,
+            'avatar': getattr(user, 'avatar', ''), 'bio': getattr(user, 'description', '') or '',
+            'followers_count': followers if type(followers) is int and followers >= 0 else None}

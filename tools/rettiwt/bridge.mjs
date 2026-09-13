@@ -15,10 +15,12 @@ export function cursorValue(next) {
   return typeof next?.value === 'string' ? next.value : '';
 }
 
-function userData(user) {
+export function userData(user) {
   if (!user?.id || !user?.userName) throw Object.assign(new Error(), {safeKind: 'UserUnavailable'});
   return {id: user.id, screen_name: user.userName, name: user.fullName,
-    following_count: user.followingsCount, avatar: user.profileImage};
+    following_count: user.followingsCount, avatar: user.profileImage,
+    description: user.description ?? '',
+    followers_count: Number.isSafeInteger(user.followersCount) && user.followersCount >= 0 ? user.followersCount : null};
 }
 
 export function tweetData(tweet) {

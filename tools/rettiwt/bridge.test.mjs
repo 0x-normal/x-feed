@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import {cursorValue, safeError, tweetData} from './bridge.mjs';
+import {cursorValue, safeError, tweetData, userData} from './bridge.mjs';
+const profile={id:'42',userName:'example',fullName:'Example',description:'Builder & researcher',followersCount:12345,followingsCount:50};
+assert.equal(userData(profile).description,'Builder & researcher');
+assert.equal(userData(profile).followers_count,12345);
+assert.equal(userData({...profile,followersCount:0}).followers_count,0);
+assert.equal(userData({...profile,followersCount:undefined}).followers_count,null);
 assert.equal(cursorValue('next-page'), 'next-page');
 assert.equal(cursorValue({value:'older-format'}), 'older-format');
 assert.equal(cursorValue(''), '');

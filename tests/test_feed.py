@@ -1,8 +1,24 @@
 import asyncio
+import json
+from types import SimpleNamespace
 import pytest
 from x_engine.accounts import Account, import_files
 from x_engine.store import Store
 from x_engine.worker import verify_accounts
+from x_engine.provider import user_data
+
+
+def test_follow_profile_details_survive_collection_and_feed(store):
+    store.save_recent_following('target', users(1), 1)
+    profile = user_data(SimpleNamespace(id='2', screen_name='newuser', name='New User',
+                        description='Builder <script>example</script>\nSecond line', followers_count=12345))
+    store.save_recent_following('target', [profile, *users(1)], 2)
+    detail = json.loads(store.feed('follow')['items'][0]['context'])
+    assert detail['bio'] == 'Builder <script>example</script>\nSecond line'
+    assert detail['followers_count'] == 12345
+    assert len(store.feed('follow')['items']) == 1
+    assert user_data(SimpleNamespace(id='3', screen_name='zero', name='Zero', followers_count=0))['followers_count'] == 0
+    assert user_data(SimpleNamespace(id='4', screen_name='unknown', name='Unknown'))['followers_count'] is None
 
 
 @pytest.fixture
