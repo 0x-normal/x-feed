@@ -30,7 +30,8 @@ def test_following_cursor_is_forwarded_for_bounded_window():
     client.rpc = rpc
     async def check():
         first = await client.get_user_following('42', 100)
-        assert user_data(first[0]) == {'id': '1', 'username': 'example', 'name': 'Example', 'avatar':''}
+        assert user_data(first[0]) == {'id': '1', 'username': 'example', 'name': 'Example',
+                                       'avatar':'', 'bio':'', 'followers_count':None}
         second=await first.next()
         assert second.next_cursor is None
     asyncio.run(check())
