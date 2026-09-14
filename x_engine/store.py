@@ -73,6 +73,25 @@ class Store:
                 PRIMARY KEY(target,user_id)
             );
             CREATE TABLE IF NOT EXISTS blocked_accounts (username TEXT PRIMARY KEY, reason TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS smart_accounts (
+                username TEXT PRIMARY KEY, name TEXT NOT NULL, avatar TEXT NOT NULL, bio TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS smart_scans (
+                subject_id TEXT PRIMARY KEY, username TEXT NOT NULL,
+                account TEXT NOT NULL REFERENCES accounts(username), state TEXT NOT NULL DEFAULT 'pending',
+                cursor TEXT, pages INTEGER NOT NULL DEFAULT 0, checked_at REAL, error TEXT,
+                next_run REAL NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS smart_matches (
+                subject_id TEXT NOT NULL REFERENCES smart_scans(subject_id), user_id TEXT NOT NULL,
+                username TEXT NOT NULL REFERENCES smart_accounts(username),
+                PRIMARY KEY(subject_id,user_id), UNIQUE(subject_id,username)
+            );
+            CREATE TABLE IF NOT EXISTS smart_cursors (
+                subject_id TEXT NOT NULL REFERENCES smart_scans(subject_id), cursor TEXT NOT NULL,
+                PRIMARY KEY(subject_id,cursor)
+            );
+            CREATE INDEX IF NOT EXISTS smart_scan_queue ON smart_scans(state,next_run);
         ''')
         if 'following_count' not in {r[1] for r in self.db.execute('PRAGMA table_info(following_windows)')}:
             self.db.execute('ALTER TABLE following_windows ADD COLUMN following_count INTEGER')
@@ -159,6 +178,10 @@ class Store:
     def _event(self, target, kind, subject_id, detail, now):
         self.db.execute("INSERT INTO events(target,kind,subject_id,detail,observed_at) VALUES (?,?,?,?,?)",
                         (target, kind, subject_id, json.dumps(detail, ensure_ascii=False), now))
+        if kind == 'follow_observed':
+            from .smart_accounts import queue_scan
+            account = self.db.execute('SELECT account FROM targets WHERE username=?', (target,)).fetchone()[0]
+            queue_scan(self, subject_id, detail.get('username', ''), account)
 
     def save_posts(self, target, posts, complete):
         now = time.time()
@@ -266,12 +289,20 @@ class Store:
             FROM events e WHERE e.kind='follow_observed'
         ) SELECT * FROM feed WHERE '''+' AND '.join(conditions)+' ORDER BY sort_key DESC LIMIT ?'
         rows = self.rows(sql,(*args,limit+1))
+        from .smart_accounts import result
+        smart = {}
+        for row in rows[:limit]:
+            if row['kind'] == 'follow':
+                subject = str(json.loads(row['context']).get('id', ''))
+                if subject not in smart:
+                    smart[subject] = result(self, subject)
+                row['smart_accounts'] = smart[subject]
         return {'items':rows[:limit],'next':rows[limit-1]['sort_key'] if len(rows)>limit else None}
 
     def snapshot(self):
         return {
             "counts": {table: self.db.execute(f"SELECT COUNT(*) FROM {table}"+(' WHERE enabled=1' if table=='accounts' else '')).fetchone()[0]
-                       for table in ("accounts", "targets", "posts", "events")},
+                       for table in ("accounts", "targets", "posts", "events", "smart_accounts")},
             "accounts": self.rows("SELECT username,status,reason,cooldown_until,verified_at,source_file FROM accounts WHERE enabled=1 ORDER BY CASE status WHEN 'ready' THEN 0 ELSE 1 END,rowid"),
             "excluded_accounts": self.db.execute('SELECT COUNT(*) FROM accounts WHERE enabled=0').fetchone()[0],
             "targets": self.rows("SELECT * FROM targets ORDER BY username"),

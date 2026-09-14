@@ -77,6 +77,9 @@ class RettiwtClient:
     async def get_user_by_screen_name(self, username):
         return SimpleNamespace(**await self.rpc('user', id=username))
 
+    async def get_user_by_id(self, user_id):
+        return SimpleNamespace(**await self.rpc('user', id=user_id))
+
     async def get_user_tweets(self, user_id, _type='Tweets', count=40, cursor=None):
         data = await self.rpc('replies' if _type=='Replies' else 'posts', id=user_id, count=count, cursor=cursor)
         return RettiwtPage(data, lambda next_cursor: self.get_user_tweets(user_id, _type, count, next_cursor))
@@ -84,6 +87,10 @@ class RettiwtClient:
     async def get_user_following(self, user_id, count=20, cursor=None):
         data = await self.rpc('following', id=user_id, count=min(count,20), cursor=cursor)
         return RettiwtPage(data, lambda next_cursor: self.get_user_following(user_id, count, next_cursor))
+
+    async def get_user_followers(self, user_id, count=100, cursor=None):
+        data = await self.rpc('followers', id=user_id, count=min(count,100), cursor=cursor)
+        return RettiwtPage(data, lambda next_cursor: self.get_user_followers(user_id, count, next_cursor))
 
 
 class RettiwtProvider(XProvider):

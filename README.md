@@ -48,6 +48,41 @@ This count guard suppresses page drift when the total is unchanged or lower, but
 
 Only the reference project's following-detection strategy is applied. The local feed, profile schedules, encrypted session store, and suspended-account exclusions continue to serve this app. No Telegram integration is enabled.
 
+## Smart Accounts (SA)
+
+The supplied September 7, 2026 export is bundled as a compressed CSV and imports
+55,626 unique public profiles on first startup. These are the SA reference list;
+they are separate from login sessions and the watchlist. CSV fields are data only.
+The export's `spFollowers` values are not used as project follower counts.
+
+New-follow cards show an SA badge immediately to the right of the project name.
+Click it to see matching Smart Accounts, including their names, avatars, and X links.
+`SA …` means the check has not found a match yet and is unfinished. `12+ SA` means
+12 matches have been found while checking continues. `12 SA` means X's returned
+follower pages have been exhausted; `0 SA` is shown only after the check finishes.
+The dialog refreshes while open and shows progress, failures, and the last check time.
+
+The collector checks one follower page (up to 100 profiles) per worker pass after
+the regular feed checks. It resumes saved cursors across restarts, deduplicates
+matches, and shares the existing login and global rate-limit controls. Existing
+follow cards are queued on startup. One check is shared by all cards for the same
+X account ID. A new follow observation refreshes a completed check older than 24
+hours. Catalog replacement resets checks against the new list.
+
+Counts describe matches in the followers returned by X, which can omit hidden or
+unavailable accounts. Large follower lists take longer, and incomplete or failed
+checks are not presented as final zero counts. Matching uses case-insensitive handles
+because the supplied CSV does not contain X user IDs; renamed SA handles need an
+updated catalog. Checks are observations, not a continuously refreshed follower census.
+
+To replace the catalog, stop the collector and run:
+
+```powershell
+.\.venv\Scripts\python.exe -m x_engine import-smart-accounts 'C:\path\smart-accounts.csv'
+```
+
+The catalog and check progress are included in the existing database migration bundles.
+
 ## Post coverage
 
 Each check fetches one recent timeline page and one recent replies page, requesting 20 entries each. X conversation context from other authors is filtered out. Results are merged by post ID and classified as post, reply, repost, or quote; metrics refresh on subsequent checks. The first fetch includes recent existing posts so the feed is useful immediately. There is no crawl of complete post history, and a busy account can publish more than these windows capture between checks. Deleted content is not removed automatically. Images display inside feed cards; videos and GIFs play inline with controls (GIFs loop silently). Media is included for replies, reposts, and quoted posts. Images open at full size when clicked. Existing posts gain attachments when fetched again; older posts outside the recent collection window keep their previous content. Unavailable media can still be opened through View on X.
@@ -93,6 +128,7 @@ The feed's **Sound** switch is off by default and remembers its setting in the c
 .\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\dashboard.test.mjs
 .\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\media.test.mjs
 .\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\sound.test.mjs
+.\tools\rettiwt\node_modules\node-win-x64\bin\node.exe tools\rettiwt\smart-accounts.test.mjs
 ```
 
 Tests use synthetic credentials and local HTTP; they do not call X. Windows vault tests need the same user's DPAPI access. The test suite includes synthetic encrypted migration checks.

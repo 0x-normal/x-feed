@@ -94,6 +94,12 @@ def server(directory, port=8765):
                     data=store.feed(kind=q.get('kind',['all'])[0],target=q.get('target',[None])[0],
                         query=q.get('q',[''])[0],before=q.get('before',[None])[0],exclude=q.get('exclude',[]))
                     self.send(200,json.dumps(data,ensure_ascii=False))
+                elif route.path == '/api/smart-accounts':
+                    from .smart_accounts import result
+                    subject = parse_qs(route.query).get('id', [''])[0]
+                    if not subject.isascii() or not subject.isdigit() or len(subject) > 30:
+                        raise ValueError('Invalid X account ID.')
+                    self.send(200, json.dumps(result(store, subject, include_accounts=True), ensure_ascii=False))
                 elif route.path == "/api/export":
                     query = parse_qs(route.query)
                     table, fmt = query.get("table", ["posts"])[0], query.get("format", ["json"])[0]

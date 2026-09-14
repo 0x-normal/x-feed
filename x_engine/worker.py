@@ -143,6 +143,14 @@ async def scan_target(store, provider, target, *_legacy_page_limits):
 
 
 async def run(store, once=False, target_name=None):
+    from .smart_accounts import ensure_catalog, check_next, queue_scan
+    ensure_catalog(store)
+    # Backfill cards collected before Smart Accounts were introduced.
+    with store.db:
+        for event in store.rows('''SELECT e.subject_id,e.detail,t.account FROM events e
+                JOIN targets t ON t.username=e.target LEFT JOIN smart_scans s ON s.subject_id=e.subject_id
+                WHERE e.kind='follow_observed' AND s.subject_id IS NULL ORDER BY e.id DESC'''):
+            queue_scan(store, event['subject_id'], json.loads(event['detail']).get('username', ''), event['account'])
     provider = select_provider(store)
     while True:
         successful = True
@@ -182,6 +190,7 @@ async def run(store, once=False, target_name=None):
                 successful = False
             print(json.dumps({"target": target["username"], "status": status}), flush=True)
             global_until = float(store.setting("global_cooldown_until"))
+        await check_next(store, provider)
         if once:
             return successful
         await asyncio.sleep(5)

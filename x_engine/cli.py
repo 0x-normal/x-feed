@@ -23,6 +23,8 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     imp = commands.add_parser("import-accounts", help="Import six/seven-field account files without printing secrets")
     imp.add_argument("files", nargs="+")
+    smart = commands.add_parser('import-smart-accounts', help='Replace the public Smart Account catalog from CSV')
+    smart.add_argument('file')
     commands.add_parser("accounts", help="List account status; never displays credentials")
     verify = commands.add_parser("verify", help="Validate stored sessions; defaults to one account")
     verify.add_argument("--account", type=handle)
@@ -53,9 +55,15 @@ def main():
     store = None
     try:
         store = Store(args.data_dir)
+        from .smart_accounts import ensure_catalog, import_catalog
+        if args.command != 'import-smart-accounts':
+            ensure_catalog(store)
         result = None
         if args.command == "import-accounts":
             result = import_files(store, args.files)
+        elif args.command == 'import-smart-accounts':
+            with worker_lock(store.directory):
+                result = import_catalog(store, args.file)
         elif args.command == "accounts":
             result = store.snapshot()["accounts"]
         elif args.command == "verify":

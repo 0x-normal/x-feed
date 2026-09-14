@@ -91,6 +91,26 @@ def test_api_supports_multiple_excluded_types(dashboard, tmp_path):
     assert request(dashboard, '/api/feed?exclude=invalid')[0] == 400
 
 
+def test_smart_account_endpoint_returns_same_count_and_profiles(dashboard, tmp_path):
+    from x_engine.smart_accounts import queue_scan, save_page
+    store = Store(tmp_path / 'data')
+    try:
+        with store.db:
+            store.db.execute("INSERT INTO smart_accounts VALUES ('alice','Alice','','')")
+            queue_scan(store, '42', 'project', 'sample')
+        job = store.rows('SELECT * FROM smart_scans')[0]
+        save_page(store, job, [{'id': '1', 'username': 'Alice'}], None)
+    finally:
+        store.close()
+    status, body, _ = request(dashboard, '/api/smart-accounts?id=42')
+    data = json.loads(body)
+    assert status == 200 and data['count'] == len(data['accounts']) == 1
+    assert data['accounts'][0]['username'] == 'alice'
+    assert data['state'] == 'complete'
+    assert request(dashboard, '/api/smart-accounts?id=invalid')[0] == 400
+    assert request(dashboard, '/api/smart-accounts?id=42', headers={'Host': PUBLIC_HOST})[0] == 403
+
+
 @pytest.mark.parametrize("origin,token", [
     ("http://example.org", TOKEN), (PUBLIC_ORIGIN + "/", TOKEN),
     ("https://user:password@example.org", TOKEN), (PUBLIC_ORIGIN, ""),

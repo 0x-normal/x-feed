@@ -106,14 +106,16 @@ async function main() {
     let data;
     if (op === 'self') data = userData(await client.user.details());
     else if (op === 'user') data = userData(await client.user.details(id));
-    else if (op === 'posts' || op === 'replies' || op === 'following') {
+    else if (op === 'posts' || op === 'replies' || op === 'following' || op === 'followers') {
       const page = op === 'posts' ? await client.user.timeline(id, Math.min(count, 20), cursor || undefined)
         : op === 'replies' ? await client.user.replies(id,Math.min(count,20),cursor || undefined)
+        : op === 'followers' ? await client.user.followers(id,Math.min(count,100),cursor || undefined)
         : await client.user.following(id, Math.min(count, 20), cursor || undefined);
       // Reply timelines contain conversation context by other authors; do not
       // attribute those context posts to the tracked account.
-      const items = op === 'following' ? page.list : page.list.filter(t => t.tweetBy?.id === id);
-      data = {items:items.map(op === 'following' ? userData : tweetData), next:cursorValue(page.next)};
+      const users = op === 'following' || op === 'followers';
+      const items = users ? page.list : page.list.filter(t => t.tweetBy?.id === id);
+      data = {items:items.map(users ? userData : tweetData), next:cursorValue(page.next)};
     } else throw Object.assign(new Error(), {safeKind:'InvalidOperation'});
     console.log(JSON.stringify({ok:true, data}));
   } catch(error) {
