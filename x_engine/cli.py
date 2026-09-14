@@ -55,13 +55,11 @@ def main():
     store = None
     try:
         store = Store(args.data_dir)
-        from .smart_accounts import ensure_catalog, import_catalog
-        if args.command != 'import-smart-accounts':
-            ensure_catalog(store)
         result = None
         if args.command == "import-accounts":
             result = import_files(store, args.files)
         elif args.command == 'import-smart-accounts':
+            from .smart_accounts import import_catalog
             with worker_lock(store.directory):
                 result = import_catalog(store, args.file)
         elif args.command == "accounts":

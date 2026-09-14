@@ -34,7 +34,9 @@ git pull --ff-only
 bash deploy/update.sh
 ```
 
-The updater stops the services, copies the application code into /opt/x-engine, installs dependencies, and restarts them. It preserves /var/lib/x-engine/data. A failed update leaves services stopped and prints an error; fix that error before rerunning. Back up your data before applying schema-changing updates.
+The updater validates required package assets before stopping the services, then copies the application code and declared assets (including the SA catalog) into /opt/x-engine, installs dependencies, and restarts them. It waits for the dashboard API to respond and the SA catalog to load before reporting success. It preserves /var/lib/x-engine/data. An error after services are stopped leaves them stopped and prints a diagnostic command; fix that error before rerunning. Back up your data before applying schema-changing updates.
+
+If an earlier SA update caused HTTP 502 with `127.0.0.1:8765: connect: connection refused`, pull the latest code and rerun `bash deploy/update.sh` using the commands above. The earlier updater omitted `x_engine/smart-accounts.csv.gz`; the fix copies it into the installed package. No database reset or session reimport is needed. If startup still fails, inspect the application services with `journalctl -u x-engine-dashboard -u x-engine-worker -n 60 --no-pager`. Restarting only `x-feed-web` cannot repair a stopped dashboard.
 
 ## 2. Transfer your existing data securely
 
