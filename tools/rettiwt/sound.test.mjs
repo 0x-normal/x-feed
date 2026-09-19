@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const html=readFileSync(new URL('../../x_engine/dashboard.html',import.meta.url),'utf8');
 const source=html.split('<script>')[1].split("$('sound-toggle').onchange=")[0];
 const elements=new Map(),preferences=new Map();
-let tones=0,stops=0;
+let tones=0,stops=0,scrolls=0;
 class AudioContext {
   state='running';currentTime=0;destination={};
   async resume(){this.state='running'}
@@ -14,7 +14,7 @@ class AudioContext {
   createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}}}
 }
 const runtime=vm.createContext({URL,URLSearchParams,
-  window:{AudioContext,scrollY:0},
+  window:{AudioContext,scrollY:0,scrollTo(){scrolls++}},
   document:{getElementById(id){if(!elements.has(id))elements.set(id,{});return elements.get(id)},querySelectorAll(){return []}},
   localStorage:{getItem(key){return preferences.get(key)||null}},
 });
@@ -49,15 +49,19 @@ assert.equal(tones,4,'Test sound plays the chime');
 run('stopSound()');
 assert.ok(stops>0);
 
-// The unseen-item banner keeps old cards on screen; fresh batches still chime
-// only once while the user remains scrolled down.
+// Fresh batches are inserted immediately and retain one highlight expiry across polls.
 runtime.fetch=async()=>({ok:true,json:async()=>({items:[{key:'banner-new'}],next:null})});
 run("render=()=>{};state.items=[{key:'banner-old'}];sound.seen=new Set(['banner-old']);window.scrollY=300");
 await run('loadFeed()');
 assert.equal(tones,6);
-assert.equal(elements.get('newbanner').hidden,false);
+assert.equal(run("state.items[0].key"),'banner-new');
+assert.ok(run("state.items[0]._newActivityUntil")>Date.now()+17000);
+assert.equal(scrolls,1);
+const highlightExpiry=run("state.items[0]._newActivityUntil");
 await run('loadFeed()');
 assert.equal(tones,6);
+assert.equal(run("state.items[0]._newActivityUntil"),highlightExpiry);
+assert.equal(scrolls,1,'Repeated polls must not scroll again');
 let finish;
 runtime.fetch=()=>new Promise(resolve=>{finish=resolve});
 const pending=run('loadFeed()');
