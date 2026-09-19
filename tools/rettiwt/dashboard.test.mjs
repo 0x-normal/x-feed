@@ -23,4 +23,13 @@ let depth=0;
 for(const tag of anchors){depth+=tag.startsWith('</')?-1:1;assert.ok(depth>=0&&depth<=1,'Quote links must not be nested');}
 assert.equal(depth,0);
 assert.ok(render({kind:'repost',target:'watcher',timestamp:1,text:'Only available caption',context:'{}'}).includes('Only available caption'));
+const shortPost=render({kind:'post',target:'watcher',timestamp:1,text:'Short post',context:'{}'});
+assert.ok(!shortPost.includes('data-read-more'));
+const longText='Interesting long post '.repeat(30);
+const longPost=render({kind:'post',target:'watcher',timestamp:1,text:longText,context:'{}'});
+assert.ok(longPost.includes('expandable collapsed'));
+assert.ok(longPost.includes('data-read-more'));
+assert.ok(longPost.includes('Read more'));
+const longQuote=render({...common,kind:'quote',text:'Commentary',context:JSON.stringify({original:{...original,text:longText}})});
+assert.ok(longQuote.includes('context-text expandable collapsed'));
 console.log('Full repost and quote caption rendering passed');
