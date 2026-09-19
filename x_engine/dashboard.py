@@ -137,6 +137,8 @@ def server(directory, port=8765):
                         changed=store.db.execute('UPDATE targets SET next_run=0 WHERE username=? AND enabled=1',(handle(body['username']),)).rowcount
                     if not changed:raise ValueError('No enabled target.')
                     result={'queued':True}
+                elif self.path == '/api/targets/remove':
+                    result = store.remove_target(body['username'])
                 else:
                     self.send(404, '{"error":"Not found."}')
                     return

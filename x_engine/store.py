@@ -167,6 +167,16 @@ class Store:
                 interval_seconds=excluded.interval_seconds,enabled=1,next_run=0""", (username, account, interval,time.time()))
         return {"target": username, "account": account, "interval_seconds": interval}
 
+    def remove_target(self, username):
+        username = handle(username)
+        with self.db:
+            if not self.db.execute("SELECT 1 FROM targets WHERE username=?", (username,)).fetchone():
+                raise ValueError("Target not found.")
+            for table in ("following_windows", "following_seen", "following", "posts", "events", "scans"):
+                self.db.execute(f"DELETE FROM {table} WHERE target=?", (username,))
+            self.db.execute("DELETE FROM targets WHERE username=?", (username,))
+        return {"removed": True, "target": username}
+
     def setting(self, key, default="0"):
         row = self.db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
         return row[0] if row else default

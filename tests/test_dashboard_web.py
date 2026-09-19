@@ -91,6 +91,30 @@ def test_api_supports_multiple_excluded_types(dashboard, tmp_path):
     assert request(dashboard, '/api/feed?exclude=invalid')[0] == 400
 
 
+def test_remove_target_deletes_watch_and_stored_activity(dashboard, tmp_path):
+    store = Store(tmp_path / 'data')
+    try:
+        store.add_target('target')
+        store.save_posts('target', [dict(id='1', text='sample', kind='post',
+                         url='https://x.com/i/status/1', published_at=100)], True)
+        with store.db:
+            store.db.execute("INSERT INTO following VALUES ('target','2','followed','Followed')")
+            store.db.execute("INSERT INTO events(target,kind,subject_id,detail,observed_at) VALUES ('target','post_observed','1','{}',100)")
+            store.db.execute("INSERT INTO scans(target,kind,complete,item_count,observed_at) VALUES ('target','posts',1,1,100)")
+    finally:
+        store.close()
+    headers = {'Content-Type': 'application/json', 'Origin': f'http://127.0.0.1:{dashboard}'}
+    status, body, _ = request(dashboard, '/api/targets/remove', 'POST', headers, '{"username":"@Target"}')
+    assert status == 200 and json.loads(body) == {'removed': True, 'target': 'target'}
+    store = Store(tmp_path / 'data')
+    try:
+        for table in ('targets', 'posts', 'following', 'events', 'scans'):
+            assert store.db.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0] == 0
+    finally:
+        store.close()
+    assert request(dashboard, '/api/targets/remove', 'POST', headers, '{"username":"target"}')[0] == 400
+
+
 def test_smart_account_endpoint_returns_same_count_and_profiles(dashboard, tmp_path):
     from x_engine.smart_accounts import queue_scan, save_page
     store = Store(tmp_path / 'data')
