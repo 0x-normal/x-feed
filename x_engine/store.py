@@ -91,7 +91,14 @@ class Store:
                 subject_id TEXT NOT NULL REFERENCES smart_scans(subject_id), cursor TEXT NOT NULL,
                 PRIMARY KEY(subject_id,cursor)
             );
+            CREATE TABLE IF NOT EXISTS smart_lookups (
+                username TEXT PRIMARY KEY, subject_id TEXT,
+                account TEXT NOT NULL REFERENCES accounts(username),
+                state TEXT NOT NULL DEFAULT 'pending', error TEXT,
+                next_run REAL NOT NULL DEFAULT 0, updated_at REAL
+            );
             CREATE INDEX IF NOT EXISTS smart_scan_queue ON smart_scans(state,next_run);
+            CREATE INDEX IF NOT EXISTS smart_lookup_queue ON smart_lookups(state,next_run);
         ''')
         if 'following_count' not in {r[1] for r in self.db.execute('PRAGMA table_info(following_windows)')}:
             self.db.execute('ALTER TABLE following_windows ADD COLUMN following_count INTEGER')

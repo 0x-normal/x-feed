@@ -75,6 +75,12 @@ checks are not presented as final zero counts. Matching uses case-insensitive ha
 because the supplied CSV does not contain X user IDs; renamed SA handles need an
 updated catalog. Checks are observations, not a continuously refreshed follower census.
 
+The dashboard's **Smart Account checker** accepts any X handle without adding it
+to the watchlist. It resolves the profile, scans its followers in the background,
+and updates the partial SA count every 10 seconds. Select **View matching SA
+accounts** to open the profiles found so far. The check resumes automatically
+after rate limits or temporary provider errors.
+
 To replace the catalog, stop the collector and run:
 
 ```powershell

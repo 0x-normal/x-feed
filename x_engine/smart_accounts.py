@@ -53,6 +53,65 @@ def queue_scan(store, subject_id, username, account):
         store.db.execute("UPDATE smart_scans SET state='pending',cursor=NULL,pages=0,checked_at=NULL,error=NULL,next_run=0 WHERE subject_id=?", (str(subject_id),))
 
 
+def queue_lookup(store, username, account):
+    username = handle(username)
+    store.db.execute('''INSERT INTO smart_lookups(username,account,state,error,next_run,updated_at)
+        VALUES (?,?,'pending',NULL,0,?) ON CONFLICT(username) DO UPDATE SET
+        account=excluded.account,state=CASE WHEN smart_lookups.subject_id IS NULL THEN 'pending' ELSE 'resolved' END,
+        error=NULL,next_run=0,updated_at=excluded.updated_at''', (username, account, time.time()))
+    row = store.db.execute('SELECT subject_id FROM smart_lookups WHERE username=?', (username,)).fetchone()
+    if row['subject_id']:
+        queue_scan(store, row['subject_id'], username, account)
+    return lookup_result(store, username)
+
+
+def lookup_result(store, username, include_accounts=False):
+    username = handle(username)
+    row = store.db.execute('SELECT * FROM smart_lookups WHERE username=?', (username,)).fetchone()
+    if not row:
+        raise ValueError('Smart Account check not found.')
+    data = dict(row)
+    subject = data.get('subject_id')
+    if subject:
+        scan = result(store, subject, include_accounts)
+        data.update({k: v for k, v in scan.items() if k not in {'username'}})
+        data['username'] = username
+    else:
+        data.update({'count': 0, 'pages': 0, 'checked_at': None})
+        if include_accounts:
+            data['accounts'] = []
+    return data
+
+
+async def check_next_lookup(store, provider):
+    """Resolve one dashboard checker handle before its follower scan begins."""
+    from .worker import record_failure
+    if float(store.setting('global_cooldown_until')) > time.time():
+        return
+    rows = store.rows('''SELECT l.* FROM smart_lookups l JOIN accounts a ON a.username=l.account
+        WHERE l.subject_id IS NULL AND l.state!='resolved' AND l.next_run<=? AND a.enabled=1
+        AND a.status IN ('ready','unverified','cooldown') AND a.cooldown_until<=?
+        ORDER BY l.next_run,l.rowid LIMIT 1''', (time.time(), time.time()))
+    if not rows:
+        return
+    job = rows[0]
+    authenticating = True
+    try:
+        async with provider.session(job['account']) as client:
+            authenticating = False
+            profile = await provider.request(client.get_user_by_screen_name, job['username'])
+        subject = str(profile.id)
+        with store.db:
+            queue_scan(store, subject, job['username'], job['account'])
+            store.db.execute("UPDATE smart_lookups SET subject_id=?,state='resolved',error=NULL,updated_at=? WHERE username=?",
+                             (subject, time.time(), job['username']))
+    except Exception as exc:
+        status = record_failure(store, job['account'], exc, authenticating)
+        with store.db:
+            store.db.execute("UPDATE smart_lookups SET state='retrying',error=?,next_run=?,updated_at=? WHERE username=?",
+                             (status, time.time() + (86400 if status == 'target_unavailable' else 300), time.time(), job['username']))
+
+
 def result(store, subject_id, include_accounts=False):
     # The worker can commit a page between HTTP reads. Keep state, count, and
     # the clickable list in one read snapshot so they always agree.

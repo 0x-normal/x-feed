@@ -143,7 +143,7 @@ async def scan_target(store, provider, target, *_legacy_page_limits):
 
 
 async def run(store, once=False, target_name=None):
-    from .smart_accounts import ensure_catalog, check_next, queue_scan
+    from .smart_accounts import ensure_catalog, check_next, check_next_lookup, queue_scan
     ensure_catalog(store)
     # Backfill cards collected before Smart Accounts were introduced.
     with store.db:
@@ -190,6 +190,7 @@ async def run(store, once=False, target_name=None):
                 successful = False
             print(json.dumps({"target": target["username"], "status": status}), flush=True)
             global_until = float(store.setting("global_cooldown_until"))
+        await check_next_lookup(store, provider)
         await check_next(store, provider)
         if once:
             return successful

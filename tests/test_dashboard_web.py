@@ -135,6 +135,17 @@ def test_smart_account_endpoint_returns_same_count_and_profiles(dashboard, tmp_p
     assert request(dashboard, '/api/smart-accounts?id=42', headers={'Host': PUBLIC_HOST})[0] == 403
 
 
+def test_smart_account_checker_queues_handle_and_can_be_polled(dashboard):
+    headers = {'Content-Type': 'application/json', 'Origin': f'http://127.0.0.1:{dashboard}'}
+    status, body, _ = request(dashboard, '/api/smart-accounts/check', 'POST', headers,
+                              '{"username":"@Project"}')
+    data = json.loads(body)
+    assert status == 200 and data['username'] == 'project' and data['state'] == 'pending'
+    status, body, _ = request(dashboard, '/api/smart-accounts?username=project')
+    data = json.loads(body)
+    assert status == 200 and data['username'] == 'project' and data['count'] == 0
+
+
 @pytest.mark.parametrize("origin,token", [
     ("http://example.org", TOKEN), (PUBLIC_ORIGIN + "/", TOKEN),
     ("https://user:password@example.org", TOKEN), (PUBLIC_ORIGIN, ""),

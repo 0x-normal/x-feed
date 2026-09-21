@@ -12,7 +12,8 @@ from twikit.errors import TooManyRequests
 
 from x_engine.accounts import Account
 from x_engine.rettiwt import RettiwtClient, RettiwtPage
-from x_engine.smart_accounts import import_catalog, queue_scan, result, save_page, check_next
+from x_engine.smart_accounts import (check_next, check_next_lookup, import_catalog,
+                                     lookup_result, queue_lookup, queue_scan, result, save_page)
 from x_engine.store import Store
 
 
@@ -65,6 +66,23 @@ def test_count_matches_list_and_resumes_without_duplicates(store):
         assert final['count'] == len(final['accounts']) == 2
     finally:
         reopened.close()
+
+
+def test_dashboard_lookup_resolves_handle_and_queues_scan(store):
+    class LookupProvider(Provider):
+        async def get_user_by_screen_name(self, username):
+            self.calls.append(('lookup', username))
+            return SimpleNamespace(id='77', screen_name=username, name='Project')
+
+    with store.db:
+        queued = queue_lookup(store, '@Project', 'sample')
+    assert queued['username'] == 'project' and queued['state'] == 'pending'
+    provider = LookupProvider()
+    asyncio.run(check_next_lookup(store, provider))
+    data = lookup_result(store, 'project', True)
+    assert data['subject_id'] == '77' and data['state'] == 'pending'
+    assert data['count'] == 0 and data['accounts'] == []
+    assert provider.calls[-1] == ('lookup', 'project')
 
 
 def test_cycle_and_bad_page_preserve_previous_progress(store):

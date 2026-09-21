@@ -95,11 +95,17 @@ def server(directory, port=8765):
                         query=q.get('q',[''])[0],before=q.get('before',[None])[0],exclude=q.get('exclude',[]))
                     self.send(200,json.dumps(data,ensure_ascii=False))
                 elif route.path == '/api/smart-accounts':
-                    from .smart_accounts import result
-                    subject = parse_qs(route.query).get('id', [''])[0]
-                    if not subject.isascii() or not subject.isdigit() or len(subject) > 30:
-                        raise ValueError('Invalid X account ID.')
-                    self.send(200, json.dumps(result(store, subject, include_accounts=True), ensure_ascii=False))
+                    from .smart_accounts import lookup_result, result
+                    query = parse_qs(route.query)
+                    username = query.get('username', [''])[0]
+                    if username:
+                        data = lookup_result(store, username, include_accounts=True)
+                    else:
+                        subject = query.get('id', [''])[0]
+                        if not subject.isascii() or not subject.isdigit() or len(subject) > 30:
+                            raise ValueError('Invalid X account ID.')
+                        data = result(store, subject, include_accounts=True)
+                    self.send(200, json.dumps(data, ensure_ascii=False))
                 elif route.path == "/api/export":
                     query = parse_qs(route.query)
                     table, fmt = query.get("table", ["posts"])[0], query.get("format", ["json"])[0]
@@ -139,12 +145,23 @@ def server(directory, port=8765):
                     result={'queued':True}
                 elif self.path == '/api/targets/remove':
                     result = store.remove_target(body['username'])
+                elif self.path == '/api/smart-accounts/check':
+                    from .smart_accounts import queue_lookup
+                    username = handle(body['username'])
+                    accounts = store.rows("""SELECT username FROM accounts WHERE enabled=1
+                        AND status!='needs_attention' ORDER BY CASE status WHEN 'ready' THEN 0 ELSE 1 END,
+                        cooldown_until,rowid LIMIT 1""")
+                    if not accounts:
+                        raise ValueError('No working X session is available.')
+                    with store.db:
+                        result = queue_lookup(store, username, accounts[0]['username'])
                 else:
                     self.send(404, '{"error":"Not found."}')
                     return
                 self.send(200, json.dumps(result))
-            except (ValueError, KeyError, TypeError):
-                self.send(400, '{"error":"Use a valid handle, imported account, and interval of at least 60 seconds."}')
+            except (ValueError, KeyError, TypeError) as exc:
+                message = str(exc) if self.path == '/api/smart-accounts/check' else 'Use a valid handle, imported account, and interval of at least 60 seconds.'
+                self.send(400, json.dumps({'error': message}))
             except Exception:
                 self.send(500, '{"error":"Could not update target."}')
             finally:
