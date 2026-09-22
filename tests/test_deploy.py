@@ -33,6 +33,7 @@ def test_update_copies_catalog_and_preserves_existing_data(tmp_path, monkeypatch
         assert store.db.execute('SELECT COUNT(*) FROM smart_accounts').fetchone()[0] == 55626
         assert store.setting('existing_marker') == 'preserve-me'
         assert (package / 'dashboard.html').is_file()
+        assert (package / 'theme.css').is_file()
         assert (package / 'smart-accounts.csv.gz').read_bytes() == (ROOT / 'x_engine/smart-accounts.csv.gz').read_bytes()
         assert not (install / 'data').exists()
     finally:

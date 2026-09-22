@@ -17,7 +17,7 @@ x-feed = "x_engine.cli:main"
 x-engine = "x_engine.cli:main"
 
 [tool.setuptools.package-data]
-x_engine = ["dashboard.html", "smart-accounts.csv.gz"]
+x_engine = ["dashboard.html", "theme.css", "smart-accounts.csv.gz"]
 
 [tool.setuptools.packages.find]
 include = ["x_engine*"]

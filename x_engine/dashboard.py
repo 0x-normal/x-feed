@@ -85,6 +85,9 @@ def server(directory, port=8765):
             if route.path == "/":
                 self.send(200, Path(__file__).with_name("dashboard.html").read_text(encoding="utf-8"), "text/html; charset=utf-8")
                 return
+            if route.path == "/theme.css":
+                self.send(200, Path(__file__).with_name("theme.css").read_text(encoding="utf-8"), "text/css; charset=utf-8")
+                return
             store = Store(directory)
             try:
                 if route.path == "/api/status":

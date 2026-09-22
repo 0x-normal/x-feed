@@ -76,6 +76,12 @@ def test_media_policy_allows_x_video_cdn(dashboard):
     assert "img-src 'self' https://pbs.twimg.com https://abs.twimg.com;" in policy
 
 
+def test_dark_theme_stylesheet_is_served(dashboard):
+    status, body, headers = request(dashboard, '/theme.css')
+    assert status == 200 and headers['Content-Type'].startswith('text/css')
+    assert b'--bg:#111411' in body
+
+
 def test_api_supports_multiple_excluded_types(dashboard, tmp_path):
     store = Store(tmp_path / 'data')
     try:
