@@ -15,7 +15,8 @@ from x_engine.accounts import Account, import_files, parse_record, refresh_sessi
 from x_engine.dashboard import export_data, server
 from x_engine.provider import XProvider
 from x_engine.store import Store
-from x_engine.worker import record_failure, run, scan_target, worker_lock
+from x_engine.worker import (record_failure, recover_sessions_after_provider_upgrade,
+                             run, scan_target, worker_lock)
 
 
 @pytest.fixture
@@ -127,6 +128,18 @@ def test_rate_limit_persists_global_cooldown_and_redacts(store):
     assert "SECRET" not in json.dumps(store.snapshot())
     record_failure(store, "sample", Unauthorized("SECRET"))
     assert store.snapshot()["accounts"][0]["status"] == "needs_attention"
+
+
+def test_rettiwt_upgrade_rechecks_disabled_sessions_once(store):
+    store.set_setting('provider', 'rettiwt')
+    store.account_state('sample', 'needs_attention', 'Forbidden', time.time() + 9999)
+    assert recover_sessions_after_provider_upgrade(store) == 1
+    account = store.snapshot()['accounts'][0]
+    assert account['status'] == 'unverified' and account['reason'] is None
+    assert account['cooldown_until'] == 0
+    store.account_state('sample', 'needs_attention', 'Unauthorized')
+    assert recover_sessions_after_provider_upgrade(store) == 0
+    assert store.snapshot()['accounts'][0]['status'] == 'needs_attention'
 
 
 def test_rate_limited_worker_does_not_try_another_account(store, monkeypatch):

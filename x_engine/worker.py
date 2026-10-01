@@ -7,6 +7,22 @@ from contextlib import contextmanager
 from .provider import XProvider, post_data
 from .following import fetch_window
 
+RETTIWT_COMPAT_VERSION = '7.1.4'
+
+
+def recover_sessions_after_provider_upgrade(store):
+    """Retry sessions disabled by an upstream client break once per client version."""
+    if store.setting('provider', 'twifork') != 'rettiwt':
+        return 0
+    key = 'rettiwt_compat_version'
+    if store.setting(key, '') == RETTIWT_COMPAT_VERSION:
+        return 0
+    with store.db:
+        changed = store.db.execute("""UPDATE accounts SET status='unverified',reason=NULL,cooldown_until=0
+            WHERE enabled=1 AND status='needs_attention'""").rowcount
+        store.db.execute('INSERT OR REPLACE INTO settings VALUES (?,?)', (key, RETTIWT_COMPAT_VERSION))
+    return changed
+
 
 def select_provider(store):
     if store.setting('provider', 'twifork') == 'rettiwt':
@@ -145,6 +161,9 @@ async def scan_target(store, provider, target, *_legacy_page_limits):
 async def run(store, once=False, target_name=None):
     from .smart_accounts import ensure_catalog, check_next, check_next_lookup, queue_scan
     ensure_catalog(store)
+    recovered = recover_sessions_after_provider_upgrade(store)
+    if recovered:
+        print(json.dumps({'sessions_requeued_after_provider_upgrade': recovered}), flush=True)
     # Backfill cards collected before Smart Accounts were introduced.
     with store.db:
         for event in store.rows('''SELECT e.subject_id,e.detail,t.account FROM events e
